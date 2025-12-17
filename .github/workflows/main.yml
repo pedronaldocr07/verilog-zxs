@@ -1,4 +1,4 @@
-name: deploy VeinBurst
+name: deploy Mlsoccer
 
 on:
   push:
