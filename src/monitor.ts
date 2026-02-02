@@ -1,20 +1,16 @@
 /**
- * Real-time monitor for best bid/ask of YES (up) and NO (down) tokens on a Kalshi market.
- * Use this to watch prices and decide which side to buy for profit.
+ * Real-time monitor for best ask of YES (up) and NO (down) tokens on a Kalshi market.
+ * Ask-only; use this to watch prices and decide which side to buy for profit.
  */
 import { Configuration, MarketApi } from "kalshi-typescript";
 import { config } from "./config";
 import { getBitcoinUpDownMarkets } from "./bot";
 
-/** Best bid/ask in cents (1–99). Up = YES token, Down = NO token. */
+/** Ask prices in cents (1–99). Up = YES token, Down = NO token. */
 export interface MarketPrices {
   ticker: string;
-  /** Best bid for YES (up) token, cents */
-  upBidCents: number;
   /** Best ask for YES (up) token, cents */
   upAskCents: number;
-  /** Best bid for NO (down) token, cents */
-  downBidCents: number;
   /** Best ask for NO (down) token, cents */
   downAskCents: number;
   /** Last trade price, cents */
@@ -43,7 +39,7 @@ function dollarsToCents(dollars: string | undefined): number {
 }
 
 /**
- * Fetch current best bid/ask for both up (YES) and down (NO) tokens for a market.
+ * Fetch current best ask for both up (YES) and down (NO) tokens for a market.
  */
 export async function getMarketPrices(ticker: string): Promise<MarketPrices | null> {
   const conf = buildConfiguration();
@@ -54,9 +50,7 @@ export async function getMarketPrices(ticker: string): Promise<MarketPrices | nu
     if (!m) return null;
     return {
       ticker: m.ticker,
-      upBidCents: m.yes_bid ?? dollarsToCents(m.yes_bid_dollars),
       upAskCents: m.yes_ask ?? dollarsToCents(m.yes_ask_dollars),
-      downBidCents: m.no_bid ?? dollarsToCents(m.no_bid_dollars),
       downAskCents: m.no_ask ?? dollarsToCents(m.no_ask_dollars),
       lastPriceCents: m.last_price ?? dollarsToCents(m.last_price_dollars),
       fetchedAt: new Date(),
@@ -69,13 +63,26 @@ export async function getMarketPrices(ticker: string): Promise<MarketPrices | nu
 /** Default poll interval (ms) for real-time monitor. */
 const DEFAULT_POLL_MS = 2000;
 
+/** Current 15m slot key: YYYY-MM-DD_HH-MM (MM = 00, 15, 30, 45). New market opens at each slot. */
+function current15mSlot(): string {
+  const d = new Date();
+  const y = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  const h = String(d.getHours()).padStart(2, "0");
+  const min = Math.floor(d.getMinutes() / 15) * 15;
+  const minStr = String(min).padStart(2, "0");
+  return `${y}-${month}-${day}_${h}-${minStr}`;
+}
+
 /**
  * Run a real-time price monitor: poll a market every intervalMs and call onPrices each time.
- * Returns a stop function. Uses the first open Bitcoin up/down market if ticker is not provided.
+ * When no ticker is provided, refreshes to the new "first open" market at each 15m boundary (0, 15, 30, 45).
+ * Returns a stop function.
  */
 export async function startPriceMonitor(
   options: {
-    /** Market ticker to monitor. If not set, uses first open KXBTC15M market. */
+    /** Market ticker to monitor. If not set, uses first open KXBTC15M market and refreshes at 15m boundaries. */
     ticker?: string;
     /** Poll interval in ms. Default 2000. */
     intervalMs?: number;
@@ -86,6 +93,7 @@ export async function startPriceMonitor(
   }
 ): Promise<() => void> {
   let ticker = options.ticker;
+  let lastSlot = current15mSlot();
   if (!ticker) {
     const markets = await getBitcoinUpDownMarkets();
     if (markets.length === 0) {
@@ -94,10 +102,23 @@ export async function startPriceMonitor(
     ticker = markets[0].ticker;
   }
   const intervalMs = options.intervalMs ?? DEFAULT_POLL_MS;
+  const useAutoRefresh = !options.ticker;
   let stopped = false;
   const poll = async () => {
     if (stopped) return;
-    const prices = await getMarketPrices(ticker!);
+    if (useAutoRefresh) {
+      const slot = current15mSlot();
+      if (slot !== lastSlot) {
+        lastSlot = slot;
+        const markets = await getBitcoinUpDownMarkets();
+        if (markets.length > 0) ticker = markets[0].ticker;
+      }
+    }
+    if (stopped || !ticker) {
+      if (!stopped) setTimeout(poll, intervalMs);
+      return;
+    }
+    const prices = await getMarketPrices(ticker);
     if (stopped) return;
     if (prices) {
       try {
@@ -116,12 +137,10 @@ export async function startPriceMonitor(
   };
 }
 
-/** Format prices for console: up/down best bid and ask. */
+/** Format ask prices for console. */
 export function formatPricesLine(p: MarketPrices): string {
-  const upBid = (p.upBidCents / 100).toFixed(2);
   const upAsk = (p.upAskCents / 100).toFixed(2);
-  const downBid = (p.downBidCents / 100).toFixed(2);
   const downAsk = (p.downAskCents / 100).toFixed(2);
   const last = (p.lastPriceCents / 100).toFixed(2);
-  return `UP   bid=${upBid} ask=${upAsk}  |  DOWN bid=${downBid} ask=${downAsk}  |  last=${last}  @ ${p.fetchedAt.toISOString()}`;
+  return `UP ask=${upAsk}  |  DOWN ask=${downAsk}  |  last=${last}  @ ${p.fetchedAt.toISOString()}`;
 }

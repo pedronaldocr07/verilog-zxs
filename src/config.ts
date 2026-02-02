@@ -54,7 +54,7 @@ export const BTC_SERIES_TICKER = "KXBTC15M";
 
 /** Bot: max number of open Bitcoin up/down markets to consider (default 15) */
 export const BOT_MAX_MARKETS = parseInt(
-  process.env.KALSHI_BOT_MAX_MARKETS ?? "15",
+  process.env.KALSHI_BOT_MAX_MARKETS ?? "1",
   10
 );
 
