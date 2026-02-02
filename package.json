@@ -1,0 +1,29 @@
+{
+  "name": "kalshi-kickoff",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "scripts": {
+    "start": "ts-node src/server.ts",
+    "run": "ts-node src/index.ts",
+    "bot": "ts-node src/bot-run.ts",
+    "build": "tsc",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": ["kalshi", "prediction-market", "api"],
+  "author": "",
+  "license": "ISC",
+  "description": "TypeScript boilerplate for Kalshi REST & WebSocket",
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/node": "^24.10.1",
+    "@types/ws": "^8.18.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "dotenv": "^17.2.3",
+    "express": "^4.21.2",
+    "kalshi-typescript": "^3.5.0",
+    "ws": "^8.18.0"
+  }
+}
