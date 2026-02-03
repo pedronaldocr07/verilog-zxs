@@ -16,7 +16,7 @@ async function main(): Promise<void> {
   const ticker = process.env.KALSHI_MONITOR_TICKER; // optional
 
   console.log(
-    `Starting price monitor (interval=${intervalMs}ms${ticker ? ` ticker=${ticker}` : ", first open BTC up/down market"})...`
+    `Starting price monitor (poll every ${intervalMs}ms after each response${ticker ? ` ticker=${ticker}` : ", first open BTC up/down market"})...`
   );
 
   const stop = await startPriceMonitor({

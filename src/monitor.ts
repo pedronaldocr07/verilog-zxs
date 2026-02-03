@@ -77,6 +77,8 @@ function current15mSlot(): string {
 
 /**
  * Run a real-time price monitor: poll a market every intervalMs and call onPrices each time.
+ * The next poll is scheduled intervalMs after the current poll completes (including getMarketPrices).
+ * So effective time between updates = intervalMs + API latency (REST getMarket often ~1–2s).
  * When no ticker is provided, refreshes to the new "first open" market at each 15m boundary (0, 15, 30, 45).
  * Returns a stop function.
  */
